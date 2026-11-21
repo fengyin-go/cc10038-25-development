@@ -14,9 +14,12 @@ class Store:
         self._tables: dict[str, list[dict[str, Any]]] = {
             name: [dict(row) for row in rows] for name, rows in SEED_ROWS.items()
         }
+        # 仅种子里的 20 个业务模块计入运营概览；检索/重放运行时按需创建的
+        # 事件时间专题表（source_timezone、event_search 等）不改变模块口径。
+        self._module_names = sorted(self._tables)
 
     def module_names(self) -> list[str]:
-        return sorted(self._tables)
+        return list(self._module_names)
 
     def rows(self, module: str) -> list[dict[str, Any]]:
         return self._tables.setdefault(module, [])

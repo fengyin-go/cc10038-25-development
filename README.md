@@ -79,5 +79,23 @@ npm run dev
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
 
+## 跨日事件时间检索与回溯重放
+
+原始日志默认只能按接收时点（采集时间戳）浏览，`event_timeline` 补上按**原始正文事件时间**
+定位原文的入口，前端页面在「跨日事件时间检索与重放」，后端前缀 `/api/event-timeline`：
+
+- `POST /api/event-timeline/source-timezone`：登记/补登记来源时区（命名时区或固定偏移），
+  同一小时的两个来源允许一个带时区、一个只有本地时钟；补登记按版本递增。
+- `POST /api/event-timeline/search`：跨日时间段检索。正文自带 UTC 偏移或来源时区已确定的
+  记录给「精确命中」并生成事件时间重放范围；时区未确定且跨日的记录不伪装成精确匹配，
+  单独列入「待确认候选」（含可能落在前一天/后一天的旧日志），并保留日志时间原文。
+- `POST /api/event-timeline/replay`：按重放范围读取实际正文、分页处理并回写事故排查清单；
+  `max_pages` 可制造中断，`POST /replay/{id}/recover` 从断点续跑，恢复时按检索保存的时区
+  快照核对时间解释并报告时区漂移。
+- `GET /api/event-timeline/replay/{id}/revisions`：修订明细返回原日期、时区依据、
+  日志时间原文和事件瞬时；检索、清单、重放、修订通过 search_id/checklist_id/replay_id 关联。
+- 兼容历史正文的时间值（空格分隔、分钟精度、无时区），这类记录在时区确定前只作为候选。
+- 对应测试：`backend/tests/test_event_timeline.py`。
+
 领域：数据工程
 子方向：数据采集、爬虫与RPA
